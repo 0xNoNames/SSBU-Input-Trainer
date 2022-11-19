@@ -1,0 +1,77 @@
+9 frame dans ultimate mais on peut shoryu en 30 frames
+S'il y a "droite" "bas" "diag" puis "a" dans les 30 dernieres frames alors shoryu
+Save le performance.now() avec l'input et quand "a" remonter et check les temps
+entre les inputs.
+
+Sinon check input après input
+
+
+The really important point with detecting fighting game commands is to...
+- Keep a buffer of all inputs (for the last second or so)
+- When checking for a special move command do it in reverse
+
+So, for example a fireball is down, down-forward, forward and then any punch. 
+You don't keep checking for the inputs in a sequence, every frame. 
+You simply wait till any punch button is pressed. 
+On that frame you then step backwards through the buffer and look for the 
+forward direction, then the down-forward, then the down. If at any point, 
+one of those is not there you can stop your reverse search and throw 
+out the punch.  If they are all there (or within your defined tolerance) 
+you can throw out that fireball.
+
+KARA CANCEL:
+    4 frames après avoir lâché "A" pour input avec ' en dernier
+    Si input avant, il faut lâcher "A" au moins une frame avant le fin de l'input et il est possible de rappuyer sur A jusqu'aux 4 frames :
+        - donc pour hado 2 -> lâcher 3 -> 6
+        - pour shaku 4 -> 1 -> 2 -> lâcher 3 -> 6
+
+HADO :
+    - DOWN infini
+    - DownRight 10 frames
+    - Right 10 frames
+    - A 11ième frame
+
+SHORYU : 
+    20 frame window pour Shoryuken :
+    - forward (infini)
+    - down 10 frames
+    - df 11 frames + A (si à la même frame)
+        - light (1 - 2 frames)
+        - medium (3 - 4)
+        - heavy (5 +)
+
+EWGF :
+    Holding attack for more than 6 frames results in dragon uppercut.
+    here are 3 frames to execute the attack.
+    - Down, 1 frame before changing to diagonal.
+    - First diagonal frame, simple!
+    - Second diagonal frame.
+
+ACBAIR :
+    Forward + C-stick opposé + saut :
+        - Foward peut être gardé de manière infini (il faut garder le stick enfoncé)
+        - C-stick 1 frame minimum APRÈS foward
+        - À partir du moment où le c-stick est enclenché, il a une fenêtre de 3 frame pour faire le saut.
+
+SHOT HOP :
+    3 frames pour shorthop, 4ième c'est un fullhop
+
+MAWASHI : (gauche, bas, droite)
+    - 10 frames pour bas
+    - 11 pour droite si "A" à la 11ième frame
+
+
+
+
+// let lastLoop = window.performance.now();
+
+    // let thisLoop = window.performance.now();
+    // let ms = thisLoop - lastLoop;
+    // msAverage += ms;
+    // lastLoop = thisLoop;
+    // cpt += 1;
+    // if (cpt == frameAverage) {
+    //     frameInfo.innerHTML = Math.round((msAverage / frameAverage) * 100) / 100 + " ms";
+    //     cpt = 0;
+    //     msAverage = 0;
+    // }
