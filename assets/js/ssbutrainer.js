@@ -68,7 +68,7 @@ window.addEventListener("gamepaddisconnected", function () {
 // }
 
 const checkHadoken = (buffer) => {
-    if (buffer[1].direction != 6) {
+    if (buffer.length > 1 && buffer[1].direction != 6) {
         return false;
     }
 
@@ -197,7 +197,7 @@ const inputLoop = () => {
         stick.style.backgroundColor = "black";
     }
 
-    console.log(buffer);
+    // console.log(buffer);
 
     // Adding empty input into the buffer
     if (!used && (window.performance.now() - lastFrame) >= frameTime) {
