@@ -13,6 +13,8 @@ const hadoken = new Audio("assets/sounds/hadoken.mp3");
 let released = true;
 let used = false;
 let rAF;
+let controllerSettings = { "A": 0, "B": 1, "L_stick": [0, 1], "R_stick": [2, 3], "L_trigger": (1, 2), "R_trigger": 3 };
+let gui = new dat.GUI({ name: "Controller Settings" });
 // let cpt = 0;
 // let msAverage;
 let buffer = new Array();
@@ -35,11 +37,18 @@ window.window.requestAnimationFrame = function () {
 }();
 
 window.addEventListener("gamepadconnected", function () {
-    // var gp = navigator.getGamepads()[0];
-    // gamepadInfo.innerHTML = "Gamepad connected at index " + gp.index + ": " + gp.id + ". It has " + gp.buttons.length + " buttons and " + gp.axes.length + " axes";
+    var gp = navigator.getGamepads()[0];
     gamepadInfo.style.display = "none";
     stick.style.display = "block";
     angleInfo.style.display = "block";
+
+    gui.add(controllerSettings, "A", Array.from({ length: (gp.buttons.length + 1) }, (_, i) => i));
+    gui.add(controllerSettings, "B", Array.from({ length: (gp.buttons.length + 1) }, (_, i) => i));
+    gui.add(controllerSettings, "R_trigger", Array.from({ length: (gp.buttons.length + 1) }, (_, i) => i));
+    gui.add(controllerSettings, "L_trigger", Array.from({ length: (gp.buttons.length + 1) }, (_, i) => i));
+    gui.add(controllerSettings, "L_stick", Array.from({ length: (gp.axes.length + 1) / 2 }, (_, i) => [i, i + 1]));
+    gui.add(controllerSettings, "R_stick", Array.from({ length: (gp.axes.length + 1) / 2 }, (_, i) => [i, i + 1]));
+
     inputLoop();
 });
 
@@ -68,21 +77,21 @@ window.addEventListener("gamepaddisconnected", function () {
 // }
 
 const checkHadoken = (buffer) => {
-    if (buffer.length > 1 && buffer[1].direction != 6) {
+    if (buffer.length > 1 && buffer[1].direction != 1) {
         return false;
     }
 
     let indexLastR = 1;
     // console.log("indexLastR : " + indexLastR + " - " + buffer[indexLastR].direction + ", " + buffer[indexLastR].time);
 
-    let indexLastDR = buffer.slice(indexLastR).findIndex((element) => element.direction == 3) + 1;
+    let indexLastDR = buffer.slice(indexLastR).findIndex((element) => element.direction == 8) + 1;
     if (indexLastDR == -1) {
         console.log("FAILED indexLastDR");
         return false;
     }
     // console.log("indexLastDR : " + indexLastDR + " - " + buffer[indexLastDR].direction + ", " + buffer[indexLastDR].time);
 
-    let indexLastD = buffer.slice(indexLastDR).findIndex((element) => element.direction == 2) + indexLastDR;
+    let indexLastD = buffer.slice(indexLastDR).findIndex((element) => element.direction == 7) + indexLastDR;
     if (indexLastD == -1) {
         console.log("FAILED indexLastD");
         return false;
@@ -90,13 +99,11 @@ const checkHadoken = (buffer) => {
     // console.log("indexLastD : " + indexLastD + " - " + buffer[indexLastD].direction + ", " + buffer[indexLastD].time);
 
     if ((buffer[indexLastDR].time - buffer[indexLastD].time) > (frameTime * 10)) {
-        console.log("Too much time on 3");
+        console.log("Too much time on right down");
+
         return false;
-    } else if ((buffer[indexLastR].time - buffer[indexLastDR].time) > (frameTime * 10)) {
-        console.log("Too much time on 6");
-        return false;
-    } else if ((buffer[0] - buffer[indexLastD].time) > (frameTime * 21)) {
-        console.log("Pressing A too late");
+    } else if ((buffer[indexLastR].time - buffer[indexLastDR].time) > (frameTime * 11)) {
+        console.log("Too much time on right");
         return false;
     }
 
@@ -122,7 +129,7 @@ const inputLoop = () => {
     let gp = gamepads[0];
 
     // Buffer "A" button push, [1] for GCC
-    if (gp.buttons[0].pressed == true) {
+    if (gp.buttons[controllerSettings.A].pressed == true) {
         buffer.push({ direction: 0, time: window.performance.now() });
         if (released == true && checkHadoken(buffer.slice().reverse())) {
             console.log("HADOKEEEEEN");
@@ -143,52 +150,17 @@ const inputLoop = () => {
     }
 
     // Buffer analog stick
-    if ((Math.abs(gp.axes[0]) * 100) > deadZone || (Math.abs(gp.axes[1]) * 100) > deadZone) {
+    if ((Math.abs(gp.axes[controllerSettings.R_stick]) * 100) > deadZone || (Math.abs(gp.axes[1]) * 100) > deadZone) {
         used = true;
 
         leftVis.style.left = 50 + (gp.axes[0] * 100) / 2 + "%";
         leftVis.style.top = 50 + (gp.axes[1] * 100) / 2 + "%";
 
         let leftAngle = getAngle(gp.axes[0], gp.axes[1]);
-        let leftPower = (Math.sqrt((Math.abs(gp.axes[0]) ** 2 + Math.abs(-gp.axes[1]) ** 2)) * 100).toFixed(2);
-        angleInfo.innerHTML = leftAngle + "°" + "<br>" + leftPower + "%";
+        let leftDistance = (Math.sqrt((Math.abs(gp.axes[0]) ** 2 + Math.abs(-gp.axes[1]) ** 2)) * 100).toFixed(2);
+        angleInfo.innerHTML = leftAngle + "°" + "<br>" + leftDistance + "%";
 
-        if (leftAngle < (0 + activeInputZone) || leftAngle > (360 - activeInputZone)) {
-            // stick.style.backgroundColor = "#cc0001";
-            buffer.push({ direction: 6, time: window.performance.now() });
-        }
-        else if (leftAngle < (45 + activeInputZone) && leftAngle > (45 - activeInputZone)) {
-            // stick.style.backgroundColor = "#fb940b";
-            buffer.push({ direction: 9, time: window.performance.now() });
-        }
-        else if (leftAngle < (90 + activeInputZone) && leftAngle > (90 - activeInputZone)) {
-            // stick.style.backgroundColor = "#ffff01";
-            buffer.push({ direction: 8, time: window.performance.now() });
-        }
-        else if (leftAngle < (135 + activeInputZone) && leftAngle > (135 - activeInputZone)) {
-            // stick.style.backgroundColor = "#01cc00";
-            buffer.push({ direction: 7, time: window.performance.now() });
-        }
-        else if (leftAngle < (180 + activeInputZone) && leftAngle > (180 - activeInputZone)) {
-            // stick.style.backgroundColor = "#03c0c6";
-            buffer.push({ direction: 4, time: window.performance.now() });
-        }
-        else if (leftAngle < (225 + activeInputZone) && leftAngle > (225 - activeInputZone)) {
-            // stick.style.backgroundColor = "#0000fe";
-            buffer.push({ direction: 1, time: window.performance.now() });
-        }
-        else if (leftAngle < (270 + activeInputZone) && leftAngle > (270 - activeInputZone)) {
-            // stick.style.backgroundColor = "#762ca7";
-            buffer.push({ direction: 2, time: window.performance.now() });
-        }
-        else if (leftAngle < (315 + activeInputZone) && leftAngle > (315 - activeInputZone)) {
-            // stick.style.backgroundColor = "#fe98bf";
-            buffer.push({ direction: 3, time: window.performance.now() });
-        }
-        else {
-            stick.style.backgroundColor = "black";
-        }
-
+        buffer.push({ direction: ((Math.round(leftAngle / 45) % 8) + 1), time: window.performance.now() });
     } else {
         used = false;
         leftVis.style.left = "50%";
@@ -197,7 +169,6 @@ const inputLoop = () => {
         stick.style.backgroundColor = "black";
     }
 
-    // console.log(buffer);
 
     // Adding empty input into the buffer
     if (!used && (window.performance.now() - lastFrame) >= frameTime) {
@@ -207,3 +178,47 @@ const inputLoop = () => {
 
     rAF = requestAnimationFrame(inputLoop);
 };
+
+
+
+
+
+
+
+
+
+        // if (leftAngle < (0 + activeInputZone) || leftAngle > (360 - activeInputZone)) {
+        //     // stick.style.backgroundColor = "#cc0001";
+        //     buffer.push({ direction: 6, time: window.performance.now() });
+        // }
+        // else if (leftAngle < (45 + activeInputZone) && leftAngle > (45 - activeInputZone)) {
+        //     // stick.style.backgroundColor = "#fb940b";
+        //     buffer.push({ direction: 9, time: window.performance.now() });
+        // }
+        // else if (leftAngle < (90 + activeInputZone) && leftAngle > (90 - activeInputZone)) {
+        //     // stick.style.backgroundColor = "#ffff01";
+        //     buffer.push({ direction: 8, time: window.performance.now() });
+        // }
+        // else if (leftAngle < (135 + activeInputZone) && leftAngle > (135 - activeInputZone)) {
+        //     // stick.style.backgroundColor = "#01cc00";
+        //     buffer.push({ direction: 7, time: window.performance.now() });
+        // }
+        // else if (leftAngle < (180 + activeInputZone) && leftAngle > (180 - activeInputZone)) {
+        //     // stick.style.backgroundColor = "#03c0c6";
+        //     buffer.push({ direction: 4, time: window.performance.now() });
+        // }
+        // else if (leftAngle < (225 + activeInputZone) && leftAngle > (225 - activeInputZone)) {
+        //     // stick.style.backgroundColor = "#0000fe";
+        //     buffer.push({ direction: 1, time: window.performance.now() });
+        // }
+        // else if (leftAngle < (270 + activeInputZone) && leftAngle > (270 - activeInputZone)) {
+        //     // stick.style.backgroundColor = "#762ca7";
+        //     buffer.push({ direction: 2, time: window.performance.now() });
+        // }
+        // else if (leftAngle < (315 + activeInputZone) && leftAngle > (315 - activeInputZone)) {
+        //     // stick.style.backgroundColor = "#fe98bf";
+        //     buffer.push({ direction: 3, time: window.performance.now() });
+        // }
+        // else {
+        //     stick.style.backgroundColor = "black";
+        // }
