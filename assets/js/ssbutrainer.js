@@ -1,29 +1,46 @@
 "use strict";
 
+// -- -- -- -- -- -- --       -- -- -- --       -- -- -- -- -- -- -- \\
+// -- -- -- -- -- -- -- CONSTANTS AND VARIABLES -- -- -- -- -- -- -- \\
+// -- -- -- -- -- -- --       -- -- -- --       -- -- -- -- -- -- -- \\
+// HTML elements
 let gamepadInfo = document.getElementById("gamepad-info");
 let stick = document.getElementById("left-stick");
 let leftVis = document.getElementById("left-vis");
 let leftDeadZone = document.getElementById("left-dz");
 let angleInfo = document.getElementById("angle-info");
 let frameInfo = document.getElementById("frame-info");
+
+// Constants
 const frameLength = 1e3 / 60;
-const hadokenSound = new Audio("assets/sounds/hadoken.mp3");
-// const frameAverage = 50;
+const audioPlayer = new Audio();
+audioPlayer.volume = 0.05;
+const sounds = {
+    "sf_hadoken": "assets/sounds/sf_hadoken.mp3",
+    "sf_shoryuken": "assets/sounds/sf_shoryuken.mp3",
+    "ken_shoryuken": "assets/sounds/ken_shoryuken.wav"
+};
+const controllerSettings = { "A": 0, "B": 1, "L_stick": "0,1", "R_stick": "2,3", "L_trigger": 3, "R_trigger": 4, "Deadzone": 10 };
+const bufferSize = 100;
+const buffer = new Array(bufferSize);
+buffer.fill({ direction: -1, time: window.performance.now() });
+buffer.push = function () {
+    if (this.length >= bufferSize)
+        this.shift();
+    return Array.prototype.push.apply(this, arguments);
+};
+
+// Variables
 let released = true;
 let used = false;
 let rAF;
-let controllerSettings = { "A": 0, "B": 1, "L_stick": "0,1", "R_stick": "2,3", "L_trigger": 3, "R_trigger": 4, "Deadzone": 10 };
-let gui = new dat.GUI({ name: "Controller Settings" });
-// let cpt = 0;
-// let msAverage;
-let buffer = new Array();
-buffer.push = (args) => {
-    if (this.length >= 200) {
-        this.shift();
-    }
-    return Array.prototype.push.apply(this, args);
-};
+let gui;
 
+
+// -- -- -- -- -- -- --     -- -- --     -- -- -- -- -- -- -- \\
+// -- -- -- -- -- -- -- SETUP AND EVENTS -- -- -- -- -- -- -- \\
+// -- -- -- -- -- -- --     -- -- --     -- -- -- -- -- -- -- \\
+// Requestion animation setup for every navigators
 window.requestAnimationFrame = function () {
     return window.requestAnimationFrame ||
         window.webkitRequestAnimationFrame ||
@@ -35,12 +52,14 @@ window.requestAnimationFrame = function () {
         };
 }();
 
+// Gamepad connected event 
 window.addEventListener("gamepadconnected", () => {
     var gp = navigator.getGamepads()[0];
     gamepadInfo.style.display = "none";
     stick.style.display = "block";
     angleInfo.style.display = "block";
 
+    gui = new dat.GUI({ name: "Controller Settings" });
     gui.add(controllerSettings, "A", Array.from({ length: (gp.buttons.length + 1) }, (_, i) => i));
     gui.add(controllerSettings, "B", Array.from({ length: (gp.buttons.length + 1) }, (_, i) => i));
     gui.add(controllerSettings, "R_trigger", Array.from({ length: (gp.buttons.length + 1) }, (_, i) => i));
@@ -52,18 +71,24 @@ window.addEventListener("gamepadconnected", () => {
     inputLoop();
 });
 
+// Gamepad disconnected event 
 window.addEventListener("gamepaddisconnected", () => {
     stick.style.display = "none";
     angleInfo.style.display = "none";
     gamepadInfo.style.display = "block";
     gamepadInfo.innerHTML = "Waiting for gamepad";
+    gui.destroy();
     window.cancelAnimationFrame(rAF);
 });
 
+
+// -- -- -- -- -- -- --    --     -- -- -- -- -- -- -- \\
+// -- -- -- -- -- -- -- FUNCTIONS -- -- -- -- -- -- -- \\
+// -- -- -- -- -- -- --    --     -- -- -- -- -- -- -- \\
 const checkHadoken = (buffer) => {
-    if (buffer.length > 1 && buffer[1].direction != 1) {
+    // Check last input is right or down-right
+    if (buffer[1].direction != 1)
         return false;
-    }
 
     let indexLastR = 1;
 
@@ -83,13 +108,44 @@ const checkHadoken = (buffer) => {
 
     // console.log("indexLastD : " + indexLastD + " - " + buffer[indexLastD].direction + ", " + buffer[indexLastD].time);
     if ((buffer[indexLastDR].time - buffer[indexLastD].time) > (frameLength * 10)) {
-        console.log("Too much time on right down");
+        console.log("Too much time on DOWN RIGHT");
         return false;
     } else if ((buffer[indexLastR].time - buffer[indexLastDR].time) > (frameLength * 11)) {
-        console.log("Too much time on right");
+        console.log("Too much time on RIGHT");
         return false;
     }
 
+    return true;
+};
+
+const checkShoryuken = (buffer) => {
+    // Check last input is right or down-right
+    if (buffer[1].direction != 1 && buffer[1].direction != 8)
+        return false;
+
+    let indexLastDR = 1;
+
+    let indexLastD = buffer.slice(indexLastDR).findIndex((element) => element.direction == 7) + 1;
+    if (indexLastD == -1) {
+        console.log("FAILED indexLastD");
+        return false;
+    }
+
+    let indexLastR = buffer.slice(indexLastD).findIndex((element) => element.direction == 1) + indexLastDR;
+    if (indexLastR == -1) {
+        console.log("FAILED indexLastR");
+        return false;
+    }
+
+    if ((buffer[indexLastR].time - buffer[indexLastD].time) > (frameLength * 10)) {
+        console.log("Too much time on DOWN");
+        return false;
+    } else if ((buffer[indexLastD].time - buffer[indexLastDR].time) > (frameLength * 11)) {
+        console.log("Too much time on DOWN RIGHT");
+        return false;
+    }
+
+    cancelAnimationFrame(rAF);
     return true;
 };
 
@@ -102,14 +158,20 @@ const getAngle = (x, y) => {
     return (Math.round(degrees * 100) / 100);
 };
 
-let lastFrame = window.performance.now();
 
+// -- -- -- -- -- -- --    --     -- -- -- -- -- -- -- \\
+// -- -- -- -- -- -- -- MAIN LOOP -- -- -- -- -- -- -- \\
+// -- -- -- -- -- -- --    --     -- -- -- -- -- -- -- \\
+let lastFrame = window.performance.now();
 const inputLoop = () => {
+    // Check if any gamepad is connected
     let gamepads = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads : []);
     if (!gamepads)
         return;
 
     let gp = gamepads[0];
+    let leftAngle = getAngle(gp.axes[controllerSettings.L_stick[0]], gp.axes[controllerSettings.L_stick[2]]);
+    let leftDistance = (Math.sqrt((gp.axes[controllerSettings.L_stick[0]] ** 2 + gp.axes[controllerSettings.L_stick[2]] ** 2)) * 100).toFixed(2);
 
     // Show left analog stick and deadzone
     leftDeadZone.style.width = controllerSettings.Deadzone + "%";
@@ -120,9 +182,11 @@ const inputLoop = () => {
     // Buffer "A" button push
     if (gp.buttons[controllerSettings.A].pressed == true) {
         buffer.push({ direction: 0, time: window.performance.now() });
-        if (released == true && checkHadoken(buffer.slice().reverse())) {
-            console.log("HADOKEEEEEN");
-            hadokenSound.play();
+        if (released == true && checkShoryuken(buffer.slice().reverse())) {
+            console.log("GOOD INPUT");
+            audioPlayer.src = sounds.ken_shoryuken;
+            audioPlayer.currentTime = 0;
+            audioPlayer.play();
             // gp.vibrationActuator.playEffect("dual-rumble", {
             //     startDelay: 0,
             //     duration: 100,
@@ -130,7 +194,7 @@ const inputLoop = () => {
             //     strongMagnitude: 0.2,
             // });
         }
-        document.body.style.backgroundColor = "#333333";
+        document.body.style.backgroundColor = "#222222";
         used = true;
         released = false;
     } else {
@@ -139,18 +203,14 @@ const inputLoop = () => {
     }
 
     // Buffer left analog stick
-    if (((Math.abs(gp.axes[controllerSettings.L_stick[0]]) + Math.abs(gp.axes[controllerSettings.L_stick[2]])) * 100) > controllerSettings.Deadzone) {
+    if (leftDistance > controllerSettings.Deadzone) {
         used = true;
-
-        let leftAngle = getAngle(gp.axes[controllerSettings.L_stick[0]], gp.axes[controllerSettings.L_stick[2]]);
-        let leftDistance = (Math.sqrt((Math.abs(gp.axes[controllerSettings.L_stick[0]]) ** 2 + Math.abs(-gp.axes[controllerSettings.L_stick[2]]) ** 2)) * 100).toFixed(2);
         angleInfo.innerHTML = leftAngle + "°" + "<br>" + leftDistance + "%";
 
         buffer.push({ direction: ((Math.round(leftAngle / 45) % 8) + 1), time: window.performance.now() });
     } else {
         used = false;
         angleInfo.innerHTML = "0.00°<br>0.00%";
-        stick.style.backgroundColor = "black";
     }
 
     // Adding empty input into the buffer every frame at 60 fps
