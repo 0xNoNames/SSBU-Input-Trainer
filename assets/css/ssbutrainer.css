@@ -34,16 +34,26 @@ body {
     display: none;
 }
 
-.analog-vis>div {
-    width: 20px;
-    height: 20px;
-    border-radius: 15px;
-    margin-left: -10px;
-    margin-top: -10px;
-    background-color: white;
+#left-vis {
     position: absolute;
     top: 50%;
     left: 50%;
+    transform: translate(-50%, -50%);
+    width: 16px;
+    height: 16px;
+    border-radius: 15px;
+    background-color: white;
+}
+
+#left-dz {
+    width: 0%;
+    height: 0%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border: 1px solid red;
+    border-radius: 100%;
 }
 
 #angle-info {

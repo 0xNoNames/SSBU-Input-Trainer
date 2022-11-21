@@ -53,7 +53,7 @@ ACBAIR :
         - C-stick 1 frame minimum APRÈS foward
         - À partir du moment où le c-stick est enclenché, il a une fenêtre de 3 frame pour faire le saut.
 
-SHOT HOP :
+SHORT HOP :
     3 frames pour shorthop, 4ième c'est un fullhop
 
 MAWASHI : (gauche, bas, droite)
