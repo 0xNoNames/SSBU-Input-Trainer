@@ -20,6 +20,14 @@ const sounds = {
     "sf_shoryuken": "assets/sounds/sf_shoryuken.mp3",
     "ken_shoryuken": "assets/sounds/ken_shoryuken.wav"
 };
+const inputsOrder = {
+    "hadoken_r": [7, 8, 1],
+    "hadoken_L": [7, 6, 5],
+    "shoryuken_r": [8, 7, 8],
+    "shoryuken_l": [5, 7, 6],
+    "shaku_r": [6, 7, 8, 1],
+    "shaku_l": [8, 7, 6, 5]
+};
 const controllerSettings = { "A": 0, "B": 1, "L_stick": "0,1", "R_stick": "2,3", "L_trigger": 3, "R_trigger": 4, "Deadzone": 10 };
 const bufferSize = 100;
 const buffer = new Array(bufferSize);
@@ -90,19 +98,17 @@ const checkHadoken = (buffer) => {
     if (buffer[1].direction != 1)
         return false;
 
-    let indexLastR = 1;
+    let indexLast1 = 1;
 
-    // console.log("indexLastR : " + indexLastR + " - " + buffer[indexLastR].direction + ", " + buffer[indexLastR].time);
-    let indexLastDR = buffer.slice(indexLastR).findIndex((element) => element.direction == 8) + 1;
+    // console.log("indexLast1 : " + indexLast1 + " - " + buffer[indexLast1].direction + ", " + buffer[indexLast1].time);
+    let indexLastDR = buffer.slice(indexLast1).findIndex((element) => element.direction == 8) + 1;
     if (indexLastDR == -1) {
-        console.log("FAILED indexLastDR");
         return false;
     }
 
     // console.log("indexLastDR : " + indexLastDR + " - " + buffer[indexLastDR].direction + ", " + buffer[indexLastDR].time);
     let indexLastD = buffer.slice(indexLastDR).findIndex((element) => element.direction == 7) + indexLastDR;
     if (indexLastD == -1) {
-        console.log("FAILED indexLastD");
         return false;
     }
 
@@ -110,42 +116,48 @@ const checkHadoken = (buffer) => {
     if ((buffer[indexLastDR].time - buffer[indexLastD].time) > (frameLength * 10)) {
         console.log("Too much time on DOWN RIGHT");
         return false;
-    } else if ((buffer[indexLastR].time - buffer[indexLastDR].time) > (frameLength * 11)) {
+    } else if ((buffer[indexLast1].time - buffer[indexLastDR].time) > (frameLength * 11)) {
         console.log("Too much time on RIGHT");
         return false;
     }
-
     return true;
 };
 
 const checkShoryuken = (buffer) => {
-    // Check last input is right or down-right
-    if (buffer[1].direction != 1 && buffer[1].direction != 8)
-        return false;
-
-    let indexLastDR = 1;
-
-    let indexLastD = buffer.slice(indexLastDR).findIndex((element) => element.direction == 7) + 1;
-    if (indexLastD == -1) {
-        console.log("FAILED indexLastD");
+    let indexLast8 = buffer.findIndex((element) => element.direction == inputsOrder.shoryuken_r[0]);
+    if (indexLast8 == -1) {
+        console.log("Failed : You didn't input the last DOWN-RIGHT");
         return false;
     }
 
-    let indexLastR = buffer.slice(indexLastD).findIndex((element) => element.direction == 1) + indexLastDR;
-    if (indexLastR == -1) {
-        console.log("FAILED indexLastR");
+    let indexLast7 = buffer.findIndex((element) => element.direction == inputsOrder.shoryuken_r[1]);
+    if (indexLast7 == -1) {
+        console.log("Failed : You didn't input DOWN");
         return false;
     }
 
-    if ((buffer[indexLastR].time - buffer[indexLastD].time) > (frameLength * 10)) {
+    let indexLast1 = buffer.findIndex((element) => element.direction == inputsOrder.shoryuken_r[2]);
+    if (indexLast1 == -1) {
+        console.log("Failed : You didn't input the first DOWN-RIGHT");
+        return false;
+    }
+
+    // if (indexLast1 < indexLastD) {
+    //     console.log("Failed : You inputted RIGHT after DOWN");
+    //     return false;
+    // } else if (indexLast1 < indexLastDR) {
+    //     console.log("Failed : You inputted RIGHT after DOWN-RIGHT");
+    //     return false;
+    // }
+
+    if ((buffer[indexLast8].time - buffer[indexLast7].time) > (frameLength * 10)) {
         console.log("Too much time on DOWN");
         return false;
-    } else if ((buffer[indexLastD].time - buffer[indexLastDR].time) > (frameLength * 11)) {
+    } else if ((buffer[indexLast7].time - buffer[indexLast1].time) > (frameLength * 11)) {
         console.log("Too much time on DOWN RIGHT");
         return false;
     }
 
-    cancelAnimationFrame(rAF);
     return true;
 };
 
