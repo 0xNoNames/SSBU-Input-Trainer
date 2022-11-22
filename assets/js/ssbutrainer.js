@@ -28,7 +28,7 @@ const inputsOrder = {
     "shaku_l": [8, 7, 6, 5]
 };
 const controllerSettings = { "A": 0, "B": 1, "L_stick": "0,1", "R_stick": "2,3", "L_trigger": 3, "R_trigger": 4, "Deadzone": 10 };
-const bufferSize = 30;
+const bufferSize = 200;
 const buffer = new Array(bufferSize);
 buffer.fill({ direction: -1, time: window.performance.now() });
 buffer.push = function () {
@@ -66,7 +66,7 @@ window.addEventListener("gamepadconnected", () => {
     stick.style.display = "block";
     angleInfo.style.display = "block";
 
-    gui = new dat.GUI({ name: "Controller Settings" });
+    gui = new dat.GUI({ name: "Controller settings" });
     gui.add(controllerSettings, "A", Array.from({ length: (gp.buttons.length + 1) }, (_, i) => i));
     gui.add(controllerSettings, "B", Array.from({ length: (gp.buttons.length + 1) }, (_, i) => i));
     gui.add(controllerSettings, "R_trigger", Array.from({ length: (gp.buttons.length + 1) }, (_, i) => i));
@@ -99,19 +99,16 @@ const checkHadoken = (buffer) => {
 
     let indexLast1 = 1;
 
-    // console.log("indexLast1 : " + indexLast1 + " - " + buffer[indexLast1].direction + ", " + buffer[indexLast1].time);
     let indexLastDR = buffer.slice(indexLast1).findIndex((element) => element.direction == 8) + 1;
     if (indexLastDR == -1) {
         return false;
     }
 
-    // console.log("indexLastDR : " + indexLastDR + " - " + buffer[indexLastDR].direction + ", " + buffer[indexLastDR].time);
     let indexLastD = buffer.slice(indexLastDR).findIndex((element) => element.direction == 7) + indexLastDR;
     if (indexLastD == -1) {
         return false;
     }
 
-    // console.log("indexLastD : " + indexLastD + " - " + buffer[indexLastD].direction + ", " + buffer[indexLastD].time);
     if ((buffer[indexLastDR].time - buffer[indexLastD].time) > (frameLength * 10)) {
         console.log("Too much time on DOWN RIGHT");
         return false;
@@ -122,41 +119,41 @@ const checkHadoken = (buffer) => {
     return true;
 };
 
-const checkShoryuken = (buffer) => {
-    console.log(buffer);
-    let indexLast8 = buffer.findIndex((element) => element.direction == inputsOrder.shoryuken_r[0]);
+const checkShoryuken = (bufferCopy) => {
+    let indexLast8 = bufferCopy.findIndex((element) => element.direction == inputsOrder.shoryuken_r[0]);
     if (indexLast8 == -1) {
-        console.log("Failed : You didn't input the last DOWN-RIGHT");
+        console.log("Failed : You didn't input DOWN-RIGHT");
         return false;
     }
 
-    let indexLast7 = buffer.findIndex((element) => element.direction == inputsOrder.shoryuken_r[1]);
-    if (indexLast7 == -1) {
+    let index7 = bufferCopy.findIndex((element) => element.direction == inputsOrder.shoryuken_r[1]);
+    if (index7 == -1) {
         console.log("Failed : You didn't input DOWN");
         return false;
     }
 
-    let indexLast1 = buffer.findIndex((element) => element.direction == inputsOrder.shoryuken_r[2]);
-    if (indexLast1 == -1) {
+    let index8 = bufferCopy.slice(index7).findIndex((element) => element.direction == inputsOrder.shoryuken_r[2]);
+    if (index8 == -1) {
         console.log("Failed : You didn't input the first DOWN-RIGHT");
         return false;
     }
+    // sliced(index7) changed the order of the buffer
+    index8 += index7;
 
-    // if (indexLast1 < indexLastD) {
-    //     console.log("Failed : You inputted RIGHT after DOWN");
-    //     return false;
-    // } else if (indexLast1 < indexLastDR) {
-    //     console.log("Failed : You inputted RIGHT after DOWN-RIGHT");
-    //     return false;
-    // }
-
-    if ((buffer[indexLast8].time - buffer[indexLast7].time) > (frameLength * 10)) {
-        console.log("Too much time on DOWN");
-        return false;
-    } else if ((buffer[indexLast7].time - buffer[indexLast1].time) > (frameLength * 11)) {
-        console.log("Too much time on DOWN RIGHT");
+    if (indexLast8 > index7) {
+        console.log("Failed : You didn't input DOWN-RIGHT after DOWN");
         return false;
     }
+
+    if ((index8 - index7) > 10) {
+        console.log("Failed : Too much time on DOWN");
+        return false;
+    } else if (index7 > 11) {
+        console.log("Failed : Pressed A too late");
+        return false;
+    }
+
+    // Add how much time A pressed
 
     return true;
 };
@@ -201,6 +198,9 @@ const update = (timeStamp) => {
             //     strongMagnitude: 0.2,
             // });
         }
+
+        // Clear the buffer 
+        buffer.fill({ direction: -1, time: window.performance.now() });
         document.body.style.backgroundColor = "#222222";
         used = true;
         released = false;
@@ -213,7 +213,6 @@ const update = (timeStamp) => {
     if (leftDistance > controllerSettings.Deadzone) {
         used = true;
         angleInfo.innerHTML = leftAngle + "°" + "<br>" + leftDistance + "%";
-
         buffer.push({ direction: ((Math.round(leftAngle / 45) % 8) + 1), time: timeStamp });
     } else {
         used = false;
