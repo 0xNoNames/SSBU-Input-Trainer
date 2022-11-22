@@ -9,7 +9,6 @@ let stick = document.getElementById("left-stick");
 let leftVis = document.getElementById("left-vis");
 let leftDeadZone = document.getElementById("left-dz");
 let angleInfo = document.getElementById("angle-info");
-let frameInfo = document.getElementById("frame-info");
 
 // Constants
 const frameLength = 1e3 / 60;
@@ -29,7 +28,7 @@ const inputsOrder = {
     "shaku_l": [8, 7, 6, 5]
 };
 const controllerSettings = { "A": 0, "B": 1, "L_stick": "0,1", "R_stick": "2,3", "L_trigger": 3, "R_trigger": 4, "Deadzone": 10 };
-const bufferSize = 100;
+const bufferSize = 30;
 const buffer = new Array(bufferSize);
 buffer.fill({ direction: -1, time: window.performance.now() });
 buffer.push = function () {
@@ -49,7 +48,7 @@ let gui;
 // -- -- -- -- -- -- -- SETUP AND EVENTS -- -- -- -- -- -- -- \\
 // -- -- -- -- -- -- --     -- -- --     -- -- -- -- -- -- -- \\
 // Requestion animation setup for every navigators
-window.requestAnimationFrame = function () {
+window.requestAnimationFrame = function (f) {
     return window.requestAnimationFrame ||
         window.webkitRequestAnimationFrame ||
         window.mozRequestAnimationFrame ||
@@ -76,7 +75,7 @@ window.addEventListener("gamepadconnected", () => {
     gui.add(controllerSettings, "R_stick", Array.from({ length: (gp.axes.length + 1) / 2 }, (_, i) => [i * 2, i * 2 + 1]));
     gui.add(controllerSettings, "Deadzone", 0, 100);
 
-    inputLoop();
+    rAF = window.requestAnimationFrame(loop);
 });
 
 // Gamepad disconnected event 
@@ -124,6 +123,7 @@ const checkHadoken = (buffer) => {
 };
 
 const checkShoryuken = (buffer) => {
+    console.log(buffer);
     let indexLast8 = buffer.findIndex((element) => element.direction == inputsOrder.shoryuken_r[0]);
     if (indexLast8 == -1) {
         console.log("Failed : You didn't input the last DOWN-RIGHT");
@@ -170,12 +170,7 @@ const getAngle = (x, y) => {
     return (Math.round(degrees * 100) / 100);
 };
 
-
-// -- -- -- -- -- -- --    --     -- -- -- -- -- -- -- \\
-// -- -- -- -- -- -- -- MAIN LOOP -- -- -- -- -- -- -- \\
-// -- -- -- -- -- -- --    --     -- -- -- -- -- -- -- \\
-let lastFrame = window.performance.now();
-const inputLoop = () => {
+const update = (timeStamp) => {
     // Check if any gamepad is connected
     let gamepads = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads : []);
     if (!gamepads)
@@ -193,7 +188,7 @@ const inputLoop = () => {
 
     // Buffer "A" button push
     if (gp.buttons[controllerSettings.A].pressed == true) {
-        buffer.push({ direction: 0, time: window.performance.now() });
+        buffer.push({ direction: 0, time: timeStamp });
         if (released == true && checkShoryuken(buffer.slice().reverse())) {
             console.log("GOOD INPUT");
             audioPlayer.src = sounds.ken_shoryuken;
@@ -219,17 +214,41 @@ const inputLoop = () => {
         used = true;
         angleInfo.innerHTML = leftAngle + "°" + "<br>" + leftDistance + "%";
 
-        buffer.push({ direction: ((Math.round(leftAngle / 45) % 8) + 1), time: window.performance.now() });
+        buffer.push({ direction: ((Math.round(leftAngle / 45) % 8) + 1), time: timeStamp });
     } else {
         used = false;
         angleInfo.innerHTML = "0.00°<br>0.00%";
     }
 
-    // Adding empty input into the buffer every frame at 60 fps
-    if (!used && (window.performance.now() - lastFrame) >= frameLength) {
-        buffer.push({ direction: -1, time: window.performance.now() });
-        lastFrame = window.performance.now();
+    // Adding empty input if no command inputted
+    if (!used)
+        buffer.push({ direction: -1, time: timeStamp });
+};
+
+// -- -- -- -- -- -- --    --     -- -- -- -- -- -- -- \\
+// -- -- -- -- -- -- -- MAIN LOOP -- -- -- -- -- -- -- \\
+// -- -- -- -- -- -- --    --     -- -- -- -- -- -- -- \\
+let previousTime = 0;
+let deltaTime = 0;
+let deltaError = 0;
+const loop = (timeStamp) => {
+    if (timeStamp < (previousTime + frameLength)) {
+        rAF = window.requestAnimationFrame(loop);
+        return;
     }
 
-    rAF = requestAnimationFrame(inputLoop);
+    // Compute the delta-time against the previous time
+    deltaTime = timeStamp - previousTime;
+    // Update the previous time
+    previousTime = timeStamp;
+
+    // Update the logic
+    while (deltaTime >= frameLength) {
+        update(timeStamp);
+        deltaTime -= frameLength;
+    }
+
+    // Render here ?
+
+    rAF = window.requestAnimationFrame(loop);
 };
