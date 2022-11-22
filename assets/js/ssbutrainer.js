@@ -27,8 +27,9 @@ const inputsOrder = {
     "shaku_r": [6, 7, 8, 1],
     "shaku_l": [8, 7, 6, 5]
 };
+const numAnnotation = ["RIGHT", "UP-RIGHT", "UP", "UP-LEFT", "LEFT", "DOWN-LEFT", "DOWN", "DOWN-RIGHT"];
 const controllerSettings = { "A": 0, "B": 1, "L_stick": "0,1", "R_stick": "2,3", "L_trigger": 3, "R_trigger": 4, "Deadzone": 10 };
-const bufferSize = 200;
+const bufferSize = 50;
 const buffer = new Array(bufferSize);
 buffer.fill({ direction: -1, time: window.performance.now() });
 buffer.push = function () {
@@ -92,63 +93,23 @@ window.addEventListener("gamepaddisconnected", () => {
 // -- -- -- -- -- -- --    --     -- -- -- -- -- -- -- \\
 // -- -- -- -- -- -- -- FUNCTIONS -- -- -- -- -- -- -- \\
 // -- -- -- -- -- -- --    --     -- -- -- -- -- -- -- \\
-const checkHadoken = (buffer) => {
-    // Check last input is right or down-right
-    if (buffer[1].direction != 1)
-        return false;
+const checkThreeMotionInput = (bufferCopy, inputsOrder) => {
+    let indexThird = bufferCopy.findIndex((element) => element.direction == inputsOrder[2]);
+    let indexSecond = bufferCopy.findIndex((element) => element.direction == inputsOrder[1]);
+    let indexFirst = bufferCopy.slice(indexSecond).findIndex((element) => element.direction == inputsOrder[0]);
 
-    let indexLast1 = 1;
+    // sliced(indexSecond) changed the order of the buffer
+    indexFirst += indexSecond;
 
-    let indexLastDR = buffer.slice(indexLast1).findIndex((element) => element.direction == 8) + 1;
-    if (indexLastDR == -1) {
+    if (indexThird == -1 || indexSecond == -1 || (indexFirst - indexSecond) == -1 || indexThird > indexSecond || indexSecond > indexFirst || indexThird > indexFirst) {
+        console.log(`Failed : You must input ${numAnnotation[inputsOrder[0] - 1]} -> ${numAnnotation[inputsOrder[1] - 1]} -> ${numAnnotation[inputsOrder[2] - 1]}`);
         return false;
     }
 
-    let indexLastD = buffer.slice(indexLastDR).findIndex((element) => element.direction == 7) + indexLastDR;
-    if (indexLastD == -1) {
+    if ((bufferCopy[indexSecond].time - bufferCopy[indexFirst].time) > (10 * frameLength)) {
+        console.log(`Failed : Too much time on ${numAnnotation[inputsOrder[1] - 1]}`);
         return false;
-    }
-
-    if ((buffer[indexLastDR].time - buffer[indexLastD].time) > (frameLength * 10)) {
-        console.log("Too much time on DOWN RIGHT");
-        return false;
-    } else if ((buffer[indexLast1].time - buffer[indexLastDR].time) > (frameLength * 11)) {
-        console.log("Too much time on RIGHT");
-        return false;
-    }
-    return true;
-};
-
-const checkShoryuken = (bufferCopy) => {
-    let indexLast8 = bufferCopy.findIndex((element) => element.direction == inputsOrder.shoryuken_r[0]);
-    if (indexLast8 == -1) {
-        console.log("Failed : You didn't input DOWN-RIGHT");
-        return false;
-    }
-
-    let index7 = bufferCopy.findIndex((element) => element.direction == inputsOrder.shoryuken_r[1]);
-    if (index7 == -1) {
-        console.log("Failed : You didn't input DOWN");
-        return false;
-    }
-
-    let index8 = bufferCopy.slice(index7).findIndex((element) => element.direction == inputsOrder.shoryuken_r[2]);
-    if (index8 == -1) {
-        console.log("Failed : You didn't input the first DOWN-RIGHT");
-        return false;
-    }
-    // sliced(index7) changed the order of the buffer
-    index8 += index7;
-
-    if (indexLast8 > index7) {
-        console.log("Failed : You didn't input DOWN-RIGHT after DOWN");
-        return false;
-    }
-
-    if ((index8 - index7) > 10) {
-        console.log("Failed : Too much time on DOWN");
-        return false;
-    } else if (index7 > 11) {
+    } else if ((bufferCopy[0].time - bufferCopy[indexSecond].time) > (11 * frameLength)) {
         console.log("Failed : Pressed A too late");
         return false;
     }
@@ -186,7 +147,7 @@ const update = (timeStamp) => {
     // Buffer "A" button push
     if (gp.buttons[controllerSettings.A].pressed == true) {
         buffer.push({ direction: 0, time: timeStamp });
-        if (released == true && checkShoryuken(buffer.slice().reverse())) {
+        if (released == true && checkThreeMotionInput(buffer.slice().reverse(), inputsOrder.hadoken_r)) {
             console.log("GOOD INPUT");
             audioPlayer.src = sounds.ken_shoryuken;
             audioPlayer.currentTime = 0;
@@ -213,7 +174,9 @@ const update = (timeStamp) => {
     if (leftDistance > controllerSettings.Deadzone) {
         used = true;
         angleInfo.innerHTML = leftAngle + "°" + "<br>" + leftDistance + "%";
-        buffer.push({ direction: ((Math.round(leftAngle / 45) % 8) + 1), time: timeStamp });
+        let numDirection = 1 + (Math.round(leftAngle / 45) % 8);
+        if (buffer.at(-1).direction != numDirection)
+            buffer.push({ direction: numDirection, time: timeStamp });
     } else {
         used = false;
         angleInfo.innerHTML = "0.00°<br>0.00%";
