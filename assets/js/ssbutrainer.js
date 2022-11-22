@@ -20,12 +20,12 @@ const sounds = {
     "ken_shoryuken": "assets/sounds/ken_shoryuken.wav"
 };
 const inputsOrder = {
-    "hadoken_r": [7, 8, 1],
     "hadoken_L": [7, 6, 5],
-    "shoryuken_r": [8, 7, 8],
-    "shoryuken_l": [5, 7, 6],
-    "shaku_r": [6, 7, 8, 1],
-    "shaku_l": [8, 7, 6, 5]
+    "hadoken_R": [7, 8, 1],
+    "shoryuken_L": [5, 7, 6],
+    "shoryuken_R": [8, 7, 8],
+    "shaku_L": [8, 7, 6, 5],
+    "shaku_R": [6, 7, 8, 1]
 };
 const numAnnotation = ["RIGHT", "UP-RIGHT", "UP", "UP-LEFT", "LEFT", "DOWN-LEFT", "DOWN", "DOWN-RIGHT"];
 const controllerSettings = { "A": 0, "B": 1, "L_stick": "0,1", "R_stick": "2,3", "L_trigger": 3, "R_trigger": 4, "Deadzone": 10 };
@@ -147,7 +147,7 @@ const update = (timeStamp) => {
     // Buffer "A" button push
     if (gp.buttons[controllerSettings.A].pressed == true) {
         buffer.push({ direction: 0, time: timeStamp });
-        if (released == true && checkThreeMotionInput(buffer.slice().reverse(), inputsOrder.hadoken_r)) {
+        if (released == true && checkThreeMotionInput(buffer.slice().reverse(), inputsOrder.hadoken_L)) {
             console.log("GOOD INPUT");
             audioPlayer.src = sounds.ken_shoryuken;
             audioPlayer.currentTime = 0;
