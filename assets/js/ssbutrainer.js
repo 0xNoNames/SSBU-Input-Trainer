@@ -13,7 +13,6 @@ let leftVis = document.getElementById("left-vis");
 let leftDeadZone = document.getElementById("left-dz");
 let angleInfo = document.getElementById("angle-info");
 
-
 // Constants
 const frameLength = 1e3 / 60;
 const audioPlayer = new Audio();
@@ -47,6 +46,14 @@ buffer.push = function () {
 let released = true;
 let used = false;
 let chosenInput = `${inputSelect[0].value}_${inputSelect[1].value}`;
+if (inputsOrder[chosenInput] === undefined || sounds[chosenInput] === undefined) {
+    chosenInput = "hado_r";
+    inputSelect[0].style.borderColor = "red";
+    inputSelect[1].style.borderColor = "red";
+} else {
+    inputSelect[0].style.borderColor = "white";
+    inputSelect[1].style.borderColor = "white";
+}
 inputImage.src = `assets/img/${chosenInput}.png`;
 let rAF;
 let gui;
@@ -106,9 +113,18 @@ window.addEventListener("gamepaddisconnected", () => {
     window.cancelAnimationFrame(rAF);
 });
 
+// Select change event
 Array.from(inputSelect).forEach((element) => {
     element.addEventListener("change", () => {
         chosenInput = `${inputSelect[0].value}_${inputSelect[1].value}`;
+        if (inputsOrder[chosenInput] === undefined || sounds[chosenInput] === undefined) {
+            chosenInput = "hado_r";
+            inputSelect[0].style.borderColor = "red";
+            inputSelect[1].style.borderColor = "red";
+        } else {
+            inputSelect[0].style.borderColor = "white";
+            inputSelect[1].style.borderColor = "white";
+        }
         inputImage.src = `assets/img/${chosenInput}.png`;
     });
 });
