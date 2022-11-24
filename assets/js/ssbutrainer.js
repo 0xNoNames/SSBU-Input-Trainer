@@ -45,14 +45,16 @@ buffer.push = function () {
 // Variables
 let released = true;
 let used = false;
-let chosenInput = `${inputSelect[0].value}_${inputSelect[1].value}`;
+let chosenInput = `${inputSelect[1].value}_${inputSelect[2].value}`;
 if (inputsOrder[chosenInput] === undefined || sounds[chosenInput] === undefined) {
     chosenInput = "hado_r";
     inputSelect[0].style.borderColor = "red";
     inputSelect[1].style.borderColor = "red";
+    inputSelect[2].style.borderColor = "red";
 } else {
     inputSelect[0].style.borderColor = "white";
     inputSelect[1].style.borderColor = "white";
+    inputSelect[2].style.borderColor = "white";
 }
 inputImage.src = `assets/img/${chosenInput}.png`;
 let rAF;
@@ -116,14 +118,16 @@ window.addEventListener("gamepaddisconnected", () => {
 // Select change event
 Array.from(inputSelect).forEach((element) => {
     element.addEventListener("change", () => {
-        chosenInput = `${inputSelect[0].value}_${inputSelect[1].value}`;
+        chosenInput = `${inputSelect[1].value}_${inputSelect[2].value}`;
         if (inputsOrder[chosenInput] === undefined || sounds[chosenInput] === undefined) {
             chosenInput = "hado_r";
             inputSelect[0].style.borderColor = "red";
             inputSelect[1].style.borderColor = "red";
+            inputSelect[2].style.borderColor = "red";
         } else {
             inputSelect[0].style.borderColor = "white";
             inputSelect[1].style.borderColor = "white";
+            inputSelect[2].style.borderColor = "white";
         }
         inputImage.src = `assets/img/${chosenInput}.png`;
     });
@@ -156,7 +160,6 @@ const checkThreeMotionInput = (bufferCopy, inputsOrder, shoryu = false) => {
         for (let i = 0; i < inputsOrder.length; i++) {
             let subArray = inputsOrder[i];
             for (let j = 0; j < subArray.length; j++) {
-                console.log();
                 msg += ` ${numAnnotation[parseInt(subArray[j]) - 1]} `;
                 if (j + 1 < subArray.length)
                     msg += "or";
