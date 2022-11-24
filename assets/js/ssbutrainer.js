@@ -25,16 +25,16 @@ const sounds = {
     "shoryu_r": "assets/sounds/ken_shoryuken.wav"
 };
 const inputsOrder = {
-    "hado_l": [7, 6, 5],
-    "hado_r": [7, 8, 1],
-    "shoryu_l": [5, 7, 6],
-    "shoryu_r": [8, 7, 8],
-    "shaku_l": [8, 7, 6, 5],
-    "shaku_r": [6, 7, 8, 1]
+    "hado_l": [[7], [6], [5]],
+    "hado_r": [[7], [8], [1]],
+    "shoryu_l": [[5, 6], [7], [5, 6]],
+    "shoryu_r": [[1, 8], [7], [1, 8]],
+    "shaku_l": [[8], [7], [6], [5]],
+    "shaku_r": [[6], [7], [8], [1]]
 };
 const numAnnotation = ["RIGHT", "UP-RIGHT", "UP", "UP-LEFT", "LEFT", "DOWN-LEFT", "DOWN", "DOWN-RIGHT"];
 const controllerSettings = { "A": 0, "B": 1, "L_stick": "0,1", "R_stick": "2,3", "L_trigger": 3, "R_trigger": 4, "Deadzone": 15 };
-const bufferSize = 10;
+const bufferSize = 100;
 const buffer = new Array(bufferSize);
 buffer.fill({ direction: -1, time: window.performance.now() });
 buffer.push = function () {
@@ -117,37 +117,70 @@ Array.from(inputSelect).forEach((element) => {
 // -- -- -- -- -- -- --    --     -- -- -- -- -- -- -- \\
 // -- -- -- -- -- -- -- FUNCTIONS -- -- -- -- -- -- -- \\
 // -- -- -- -- -- -- --    --     -- -- -- -- -- -- -- \\
-const checkThreeMotionInput = (bufferCopy, inputsOrder) => {
-    let indexThird = bufferCopy.findIndex((element) => element.direction == inputsOrder[2]);
-    let indexSecond = bufferCopy.findIndex((element) => element.direction == inputsOrder[1]);
-    let indexFirst = bufferCopy.slice(indexSecond).findIndex((element) => element.direction == inputsOrder[0]);
+const checkThreeMotionInput = (bufferCopy, inputsOrder, shoryu = false) => {
+    let indexThird = bufferCopy.findIndex((element) => inputsOrder[2].includes(element.direction));
+    let indexSecond = bufferCopy.findIndex((element) => inputsOrder[1].includes(element.direction));
+    let indexFirst = bufferCopy.slice(indexSecond).findIndex((element) => inputsOrder[0].includes(element.direction));
 
     // sliced(indexSecond) changed the order of the buffer
     indexFirst += indexSecond;
-    console.log(`-------------------------------------`);
-    console.log(bufferCopy);
-    console.log(`indexFirst : ${indexFirst}`);
-    console.log(`indexSecond : ${indexSecond}`);
-    console.log(`indexThird : ${indexThird}`);
 
     if (indexThird == -1 || indexSecond == -1 || (indexFirst - indexSecond) == -1 || indexThird > indexSecond || indexSecond > indexFirst || indexThird > indexFirst) {
-        console.log(`Failed : You must input ${numAnnotation[inputsOrder[0] - 1]} -> ${numAnnotation[inputsOrder[1] - 1]} -> ${numAnnotation[inputsOrder[2] - 1]}`);
+        console.log(` `);
+        console.log(`-------------------------------------`);
+        console.log(`-------------------------------------`);
+        console.log(bufferCopy);
+        console.log(`indexFirst : ${indexFirst}`);
+        console.log(`indexSecond : ${indexSecond}`);
+        console.log(`indexThird : ${indexThird}`);
+
+
+        let msg = "Failed : You must input";
+
+        for (let i = 0; i < inputsOrder.length; i++) {
+            let subArray = inputsOrder[i];
+            for (let j = 0; j < subArray.length; j++) {
+                console.log();
+                msg += ` ${numAnnotation[parseInt(subArray[j]) - 1]} `;
+                if (j + 1 < subArray.length)
+                    msg += "or";
+            }
+            if (i + 1 < inputsOrder.length)
+                msg += "->";
+        }
+        console.log(msg);
+        // console.log(`Failed : You must input ${numAnnotation[inputsOrder[0] - 1]} -> ${numAnnotation[inputsOrder[1] - 1]} -> ${numAnnotation[inputsOrder[2] - 1]}`);
         return false;
     }
 
     if ((bufferCopy[indexThird].time - bufferCopy[indexSecond].time) > (10 * frameLength)) {
+        console.log(` `);
+        console.log(`-------------------------------------`);
+        console.log(`-------------------------------------`);
+        console.log(bufferCopy);
+        console.log(`indexFirst : ${indexFirst}`);
+        console.log(`indexSecond : ${indexSecond}`);
+        console.log(`indexThird : ${indexThird}`);
+
         console.log(`Failed : Too much time on ${numAnnotation[inputsOrder[1] - 1]}`);
         console.log(bufferCopy[indexThird].time - bufferCopy[indexSecond].time);
         console.log((10 * frameLength));
         return false;
-    } else if ((bufferCopy[0].time - bufferCopy[indexSecond].time) > (12 * frameLength)) {
+    } else if ((bufferCopy[0].time - bufferCopy[indexThird].time) > (11 * frameLength)) {
+        console.log(` `);
+        console.log(`-------------------------------------`);
+        console.log(`-------------------------------------`);
+        console.log(bufferCopy);
+        console.log(`indexFirst : ${indexFirst}`);
+        console.log(`indexSecond : ${indexSecond}`);
+        console.log(`indexThird : ${indexThird}`);
+
         console.log("Failed : Pressed attack button too late");
         console.log(bufferCopy[0].time - bufferCopy[indexSecond].time);
-        console.log((12 * frameLength));
+        console.log((11 * frameLength));
         return false;
     }
 
-    console.log(`-------------------------------------`);
     // Add how much time A pressed
 
     return true;
@@ -233,21 +266,21 @@ let previousTime = 0;
 let deltaTime = 0;
 let deltaError = 0;
 const loop = (timeStamp) => {
-    if (timeStamp < (previousTime + frameLength)) {
-        rAF = window.requestAnimationFrame(loop);
-        return;
-    }
+    // if (timeStamp < (previousTime + frameLength)) {
+    //     rAF = window.requestAnimationFrame(loop);
+    //     return;
+    // }
 
-    // Compute the delta-time against the previous time
-    deltaTime = timeStamp - previousTime;
-    // Update the previous time
-    previousTime = timeStamp;
+    // // Compute the delta-time against the previous time
+    // deltaTime = timeStamp - previousTime;
+    // // Update the previous time
+    // previousTime = timeStamp;
 
-    // Update the logic
-    while (deltaTime >= frameLength) {
-        update(timeStamp);
-        deltaTime -= frameLength;
-    }
+    // // Update the logic
+    // while (deltaTime >= frameLength) {
+    update(timeStamp);
+    //     deltaTime -= frameLength;
+    // }
 
     // Render here ?
 
